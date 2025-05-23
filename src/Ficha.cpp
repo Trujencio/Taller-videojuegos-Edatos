@@ -20,6 +20,13 @@ void Ficha::dibujar(float tamanoCasilla) {
     DrawCircle(x, y, radio, color);
 }
 
+bool Ficha::puedeMoverA(int filaDestino) {
+    if (this -> getEsDama()) return true;
+    if (jugador == 1) return filaDestino < fila;
+    if (jugador == 2) return filaDestino > fila; 
+    return false;
+}
+
 void Ficha::moverA(int nuevaFila, int nuevaColumna) {
     fila = nuevaFila;
     columna = nuevaColumna;
@@ -28,4 +35,5 @@ void Ficha::moverA(int nuevaFila, int nuevaColumna) {
 int Ficha::getFila(){return fila;}
 int Ficha::getColumna(){ return columna; }
 int Ficha::getJugador(){ return jugador; }
+bool Ficha::getEsDama(){return esDama;}
 

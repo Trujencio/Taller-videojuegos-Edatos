@@ -7,10 +7,10 @@ class Nodo{
         Ficha* ficha;
         Nodo* siguiente;
         Nodo* nodoFinal;
-        int fichasVivas = 12;
         Nodo(Ficha* ficha);
         ~Nodo(){};
         static Nodo* agregarFicha(Nodo* head, Ficha* nuevaFicha);
         Ficha* elegirFicha(Nodo* head);
-        Nodo* eliminarNodo(Nodo* head,Ficha* fichaEliminar); 
+        Nodo* eliminarNodo(Nodo* head,Ficha* fichaEliminar);
+        static int numeroAleatorio(int min, int max);
 };

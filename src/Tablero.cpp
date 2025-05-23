@@ -1,5 +1,4 @@
 #include "Tablero.h"
-#include <cstdlib>
 
 Tablero::Tablero() {
     for (int fila = 0; fila < 8; ++fila)
@@ -17,10 +16,51 @@ Tablero::~Tablero() {
     }
 }
 
-bool Tablero::validarMovimiento(int filaDestino,int colDestino){
-    if (movPosible[filaDestino][colDestino] == 1){return true;}
+bool Tablero::validarMovimiento(Ficha* ficha, int filaDestino, int colDestino) {
+    if (ficha == nullptr) return false;
+
+    int filaOrigen = ficha -> getFila();
+    int colOrigen = ficha -> getColumna();
+
+    // Validar límites
+    if (filaDestino < 0 || filaDestino >= 8 || colDestino < 0 || colDestino >= 8)
+        return false;
+
+    // Validar que la casilla sea negra (donde se puede jugar)
+    if (movPosible[filaDestino][colDestino] == 0)
+        return false;
+
+    // Verificar que la casilla destino esté vacía
+    if (casillas[filaDestino][colDestino] != nullptr)
+        return false;
+
+    int difFila = filaDestino - filaOrigen;
+    int difCol = colDestino - colOrigen;
+
+    // Lo cambié para un solo if.
+    if (!ficha -> puedeMoverA(filaDestino))
+        return false;
+
+    // Movimiento simple (1 casilla diagonal)
+    if (abs(difFila) == 1 && abs(difCol) == 1) {
+        return true;
+    }
+
+    // Salto (2 casillas): revisar si hay una ficha del rival en medio
+    if (abs(difFila) == 2 && abs(difCol) == 2) {
+        int filaIntermedia = (filaOrigen + filaDestino) / 2;
+        int colIntermedia = (colOrigen + colDestino) / 2;
+
+        Ficha* fichaIntermedia = casillas[filaIntermedia][colIntermedia];
+
+        if (fichaIntermedia != nullptr && fichaIntermedia -> getJugador() != ficha -> getJugador()) {
+            return true;
+        }
+    }
+
     return false;
 }
+
 
 void Tablero::dibujar(float tamanoCasilla) {
     for (int fila = 0; fila < 8; ++fila) {
@@ -43,66 +83,29 @@ void Tablero::dibujar(float tamanoCasilla) {
         );
     }
 }
-
-void Tablero::manejarClick(int mouseX, int mouseY, float tamanoCasilla) {
-    int columna = mouseX / tamanoCasilla;
-    int fila = mouseY / tamanoCasilla;
-
+bool Tablero::manejarClick(int fila, int columna) {
     if (fila < 0 || fila >= 8 || columna < 0 || columna >= 8)
-        return;
-
-    // Si no es tu turno (jugador 2), no hacer nada
-    if (turnoJugador != 2) {
-        return;
-    }
-
-    Ficha* fichaClickeada = casillas[fila][columna];
+        return false;
 
     if (fichaSeleccionada == nullptr) {
-        // Solo puedes seleccionar fichas del jugador 2 (tú)
-        if (fichaClickeada != nullptr && fichaClickeada->getJugador() == 2) {
-            fichaSeleccionada = fichaClickeada;
-
-            // (Opcional) Aquí podrías generar la matriz de movimientos válidos si quisieras expandir la lógica más adelante
-            // generarMovimientosPosibles(fichaSeleccionada);
+        Ficha* ficha = casillas[fila][columna];
+        if (ficha != nullptr && ficha->getJugador() == 1) {  // validar turno
+            fichaSeleccionada = ficha;
+            return true; // seleccionó ficha
         }
-    } else {
-        // Si clickeamos una casilla vacía
-        if (fichaClickeada == nullptr) {
-            // Verificar que el movimiento está permitido según movPosible
-            if (!validarMovimiento(fila, columna)) {
-                fichaSeleccionada = nullptr;
-                return;
-            }
-
-            int filaOrigen = fichaSeleccionada->getFila();
-            int colOrigen = fichaSeleccionada->getColumna();
-
-            // Validar que jugador 2 solo pueda mover hacia arriba (filaDestino < filaOrigen)
-            if (fila >= filaOrigen) {
-                fichaSeleccionada = nullptr;
-                return;
-            }
-
-            if (abs(fila - filaOrigen) == 2 && abs(columna - colOrigen) == 2) {
-                int filaComida = (fila + filaOrigen) / 2;
-                int colComida = (columna + colOrigen) / 2;
-                Ficha* fichaComida = casillas[filaComida][colComida];
-
-                if (fichaComida != nullptr && fichaComida->getJugador() != fichaSeleccionada->getJugador()) {
-                    comerFicha(fichaSeleccionada, fichaComida, fila, columna);
-                    turnoJugador = 1; // Cambia turno a IA después de comer
-                }
-            } else {
-                casillas[fila][columna] = fichaSeleccionada;
-                fichaSeleccionada->moverA(fila, columna);
-                casillas[filaOrigen][colOrigen] = nullptr;
-                turnoJugador = 1; // Cambia turno a IA después de mover
-            }
+        return false; // no seleccionó nada válido
+    }
+    else {
+        if (moverFicha(fichaSeleccionada, fila, columna)) {
+            fichaSeleccionada = nullptr;
+            return true; // movimiento válido, turno puede cambiar
+        } else {
+            fichaSeleccionada = nullptr; // deselecciona en movimiento inválido
+            return false;
         }
-        fichaSeleccionada = nullptr;
     }
 }
+
 
 
 void Tablero::colocarFicha(int fila, int columna, int jugador) {
@@ -110,19 +113,9 @@ void Tablero::colocarFicha(int fila, int columna, int jugador) {
         Ficha* ficha = new Ficha(fila, columna,jugador);
         casillas[fila][columna] = ficha;
 
-        if (jugador == 1){
-           listaFichasIA = Nodo::agregarFicha(listaFichasIA, ficha);
-        }
-        
     }
 }
 
-void Tablero::eliminarFicha(int fila, int columna) {
-    if (casillas[fila][columna] != nullptr) {
-        delete casillas[fila][columna];  // Liberás la memoria de la ficha
-        casillas[fila][columna] = nullptr;  // Pones el puntero a nullptr para evitar dangling pointer
-    }
-}
 
 Ficha* Tablero::obtenerFicha(int fila, int columna) {
     return casillas[fila][columna];
@@ -134,7 +127,7 @@ void Tablero::iniciarTablero() {
     for (int fila = 0; fila <= 2; ++fila) {
         for (int col = 0; col < 8; ++col) {
             if ((fila + col) % 2 == 1) {
-                colocarFicha(fila, col,1);
+                colocarFicha(fila, col,2);
                 // Más adelante podrías pasar un parámetro para distinguir jugador
             }
         }
@@ -144,27 +137,11 @@ void Tablero::iniciarTablero() {
     for (int fila = 5; fila <= 7; ++fila) {
         for (int col = 0; col < 8; ++col) {
             if ((fila + col) % 2 == 1) {
-                colocarFicha(fila, col,2);
+                colocarFicha(fila, col,1);
                 // Más adelante diferenciar jugador
             }
         }
     }
-}
-
-void Tablero::comerFicha(Ficha* atacante, Ficha* comida, int filaDestino, int colDestino) {
-    if (!atacante || !comida) return;
-
-    // Eliminamos la ficha comida usando fila y columna en vez del puntero
-    eliminarFicha(comida->getFila(), comida->getColumna());
-
-    // Posiciones origen
-    int filaOrigen = atacante->getFila();
-    int colOrigen = atacante->getColumna();
-
-    // Movemos la ficha atacante
-    casillas[filaDestino][colDestino] = atacante;
-    casillas[filaOrigen][colOrigen] = nullptr;
-    atacante->moverA(filaDestino, colDestino);
 }
 
 void Tablero::generarMatrizMov() {
@@ -176,6 +153,33 @@ void Tablero::generarMatrizMov() {
     }
 }
 
-void jugarCPU(){
+bool Tablero::moverFicha(Ficha* ficha, int filaDestino, int colDestino) {
+    if (!validarMovimiento(ficha, filaDestino, colDestino)) return false;
 
+    int filaOrigen = ficha->getFila();
+    int colOrigen = ficha->getColumna();
+
+    // Ver si es un salto
+    if (abs(filaDestino - filaOrigen) == 2 && abs(colDestino - colOrigen) == 2) {
+        int filaIntermedia = (filaOrigen + filaDestino) / 2;
+        int colIntermedia = (colOrigen + colDestino) / 2;
+
+        if (casillas[filaIntermedia][colIntermedia] != nullptr) {
+            delete casillas[filaIntermedia][colIntermedia];
+            casillas[filaIntermedia][colIntermedia] = nullptr;
+        }
+    }
+
+    // Mover ficha
+    casillas[filaOrigen][colOrigen] = nullptr;
+    casillas[filaDestino][colDestino] = ficha;
+    ficha->moverA(filaDestino, colDestino);
+
+    // // Promoción a dama
+    // if ((ficha->getJugador() == 1 && filaDestino == 0) ||
+    //     (ficha->getJugador() == 2 && filaDestino == 7)) {
+    //     ficha -> esDama = true;
+    // }
+
+    return true;
 }

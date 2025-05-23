@@ -2,6 +2,7 @@
 #include <raylib.h>
 #include "Ficha.h"
 #include "Nodo.h"
+#include <cmath>
 
 class Tablero {
     
@@ -9,20 +10,17 @@ class Tablero {
         Ficha* casillas[8][8];
         Ficha* fichaSeleccionada = nullptr;
         int movPosible[8][8];
-        int turnoJugador = 2;
-        Nodo* listaFichasIA = nullptr;
-                
+        
         Tablero();
         ~Tablero();
         
         void iniciarTablero();
         void dibujar(float tamanoCasilla);
         void colocarFicha(int fila, int columna,int jugador);
-        void eliminarFicha(int fila, int columna);
-        void comerFicha(Ficha* atacante, Ficha* comida, int filaDestino, int colDestino);
-        void manejarClick(int mouseX, int mouseY, float tamanoCasilla);
+        bool manejarClick(int mouseX, int mouseY);
         void generarMatrizMov();
-        void jugarCPU();
-        bool validarMovimiento(int filaDestino, int colDestino);
+
+        bool moverFicha(Ficha* ficha, int filaDestino, int colDestino);
+        bool validarMovimiento(Ficha* ficha, int filaDestino, int colDestino);
         Ficha* obtenerFicha(int fila, int columna);
     };
